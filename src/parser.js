@@ -572,7 +572,7 @@ function generateInsights(sessions, allPrompts, totals) {
     }
   }
 
-  // 8. One project dominates usage
+  // 8. Top projects by token usage
   if (sessions.length >= 5) {
     const projectTokens = {};
     for (const s of sessions) {
@@ -580,19 +580,20 @@ function generateInsights(sessions, allPrompts, totals) {
       projectTokens[proj] = (projectTokens[proj] || 0) + s.totalTokens;
     }
     const sorted = Object.entries(projectTokens).sort((a, b) => b[1] - a[1]);
-    if (sorted.length >= 2) {
-      const [topProject, topTokens] = sorted[0];
-      const pct = ((topTokens / Math.max(totals.totalTokens, 1)) * 100).toFixed(0);
-      if (pct >= 60) {
-        const projName = topProject.replace(/^C--Users-[^-]+-?/, '').replace(/^Projects-?/, '').replace(/-/g, '/') || '~';
-        insights.push({
-          id: 'project-dominance',
-          type: 'info',
-          title: `${pct}% of your tokens went to one project: ${projName}`,
-          description: `Your "${projName}" project used ${fmt(topTokens)} tokens out of ${fmt(totals.totalTokens)} total. That is ${pct}% of all your usage. The next closest project used ${fmt(sorted[1][1])} tokens.`,
-          action: 'Not necessarily a problem, but worth knowing. If this project has long-running conversations, breaking them into smaller sessions could reduce its footprint.',
-        });
-      }
+    if (sorted.length >= 1) {
+      const top = sorted.slice(0, 10);
+      const formatProj = (key) => key.replace(/^C--Users-[^-]+-?/, '').replace(/^Projects-?/, '').replace(/-/g, '/') || '~';
+      const lines = top.map(([proj, tokens], i) => {
+        const pct = ((tokens / Math.max(totals.totalTokens, 1)) * 100).toFixed(0);
+        return `${i + 1}. ${formatProj(proj)} — ${fmt(tokens)} (${pct}%)`;
+      });
+      insights.push({
+        id: 'project-dominance',
+        type: 'info',
+        title: `Top ${top.length} projects by token usage`,
+        description: lines.join('\n'),
+        action: 'Projects with long-running conversations tend to accumulate tokens quickly. Breaking them into smaller sessions can reduce their footprint.',
+      });
     }
   }
 
